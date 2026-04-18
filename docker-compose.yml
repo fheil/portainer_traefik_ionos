@@ -70,7 +70,7 @@ services:
     networks:
       - traefik_net
     deploy:
-      replicas: ${FOO1_REPLICAS:-1}
+      replicas: ${NGINX1_REPLICAS:-1}
     volumes:
       - type: bind
         source: ${BASE_DIR:-/opt/docker}/${BASE_NODE:-traefik}/${NGINX1:-foo1}
@@ -79,7 +79,7 @@ services:
 
     labels:
       - traefik.enable=true
-      - traefik.http.routers.${NGINX1:-foo1}.rule=Host(`${NGINX1:-nginx1.example.org}`)
+      - traefik.http.routers.${NGINX1:-foo1}.rule=Host(`${NGINX1_HOST:-nginx1.example.org}`)
       - traefik.http.routers.${NGINX1:-foo1}.entrypoints=websecure
       - traefik.http.routers.${NGINX1:-foo1}.tls=true
       - traefik.http.routers.${NGINX1:-foo1}.tls.certresolver=ionos
@@ -90,7 +90,7 @@ services:
     networks:
       - traefik_net
     deploy:
-      replicas: ${FOO2_REPLICAS:-1}
+      replicas: ${NGINX2_REPLICAS:-1}
     volumes:
       - type: bind
         source: ${BASE_DIR:-/opt/docker}/${BASE_NODE:-traefik}/${NGINX2:-foo2}
@@ -110,7 +110,7 @@ services:
     networks:
       - traefik_net
     deploy:
-      replicas: ${FOO3_REPLICAS:-0}
+      replicas: ${NGINX3_REPLICAS:-0}
     volumes:
       - type: bind
         source: ${BASE_DIR:-/opt/docker}/${BASE_NODE:-traefik}/${NGINX3:-foo3}
