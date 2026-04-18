@@ -1,0 +1,129 @@
+---
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik-dashboard
+    ports:
+      - ${PORT_LETSENCRYPT_CHALLENGES:-80}:80
+      - 443:443
+    networks:
+      - traefik_net
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      - type: bind
+        source: ${BASE_DIR:-/opt/docker}/${BASE_NODE:-traefik}/acme.json
+        target: /acme.json
+      - type: bind
+        source: ${BASE_DIR:-/opt/docker}/${BASE_NODE:-traefik}/etc/traefik/traefik.yml
+        target: /etc/traefik/traefik.yml
+        read_only: true
+
+    command:
+      - --certificatesresolvers.ionos.acme.email=${MAIL_LETSENCRYPT_USER_LOCAL:-"your_e-mail@example.org"}
+      - --certificatesresolvers.ionos.acme.dnschallenge.provider=ionos
+      - --certificatesresolvers.ionos.acme.storage=acme.json
+      - --certificatesresolvers.ionos.acme.dnschallenge.delaybeforecheck=0
+      - --api.dashboard=true
+      - --log.level=INFO
+      - --accesslog=true
+      - --providers.docker.network=traefik_net
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls.certresolver=ionos
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_DASHBOARD_HOST:-traefik.example.org}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))
+      - traefik.http.routers.dashboard.entrypoints=websecure
+      - traefik.http.routers.dashboard.tls=true
+      - traefik.http.routers.dashboard.tls.certresolver=ionos
+      - traefik.http.routers.dashboard.service=api@internal
+      - traefik.http.routers.dashboard.priority=100
+      - traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH:-"admin:$apr1$hashedpassword"}
+      - traefik.http.routers.dashboard.middlewares=dashboard-auth
+
+    environment:
+      - IONOS_API_KEY=${IONOS_API_KEY:-"REPLACE_WITH_YOUR_API_KEY"}
+
+  whoami:
+    image: traefik/whoami:v1.11
+    container_name: traefik-whoami
+    networks:
+      - traefik_net
+    deploy:
+      replicas: ${WHOAMI_REPLICAS:-0}
+    labels:
+      - traefik.enable=${WHOAMI_ENABLED:-false}
+      - traefik.http.routers.whoami.rule=Host(`${TRAEFIK_DASHBOARD_HOST:-traefik.example.org}`) && PathPrefix(`/whoami`)
+      - traefik.http.routers.whoami.entrypoints=websecure
+      - traefik.http.routers.whoami.tls=true
+      - traefik.http.routers.whoami.tls.certresolver=ionos
+      - traefik.http.routers.whoami.priority=50
+
+  nginx1:
+    image: nginx:alpine
+    container_name: ${NGINX1:-foo1}
+    networks:
+      - traefik_net
+    deploy:
+      replicas: ${FOO1_REPLICAS:-1}
+    volumes:
+      - type: bind
+        source: ${BASE_DIR:-/opt/docker}/${BASE_NODE:-traefik}/${NGINX1:-foo1}
+        target: /usr/share/nginx/html
+        read_only: true
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${NGINX1:-foo1}.rule=Host(`${NGINX1:-nginx1.example.org}`)
+      - traefik.http.routers.${NGINX1:-foo1}.entrypoints=websecure
+      - traefik.http.routers.${NGINX1:-foo1}.tls=true
+      - traefik.http.routers.${NGINX1:-foo1}.tls.certresolver=ionos
+
+  nginx2:
+    image: nginx:alpine
+    container_name: ${NGINX2:-foo2}
+    networks:
+      - traefik_net
+    deploy:
+      replicas: ${FOO2_REPLICAS:-1}
+    volumes:
+      - type: bind
+        source: ${BASE_DIR:-/opt/docker}/${BASE_NODE:-traefik}/${NGINX2:-foo2}
+        target: /usr/share/nginx/html
+        read_only: true
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${NGINX2:-foo2}.rule=Host(`${NGINX2_HOST:-nginx2.example.org}`)
+      - traefik.http.routers.${NGINX2:-foo2}.entrypoints=websecure
+      - traefik.http.routers.${NGINX2:-foo2}.tls=true
+      - traefik.http.routers.${NGINX2:-foo2}.tls.certresolver=ionos
+
+  nginx3:
+    image: nginx:alpine
+    container_name: ${NGINX3:-foo3}
+    networks:
+      - traefik_net
+    deploy:
+      replicas: ${FOO3_REPLICAS:-0}
+    volumes:
+      - type: bind
+        source: ${BASE_DIR:-/opt/docker}/${BASE_NODE:-traefik}/${NGINX3:-foo3}
+        target: /usr/share/nginx/html
+        read_only: true
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${NGINX3:-foo3}.rule=Host(`${NGINX3_HOST:-nginx3.example.org}`)
+      - traefik.http.routers.${NGINX3:-foo3}.entrypoints=websecure
+      - traefik.http.routers.${NGINX3:-foo3}.tls=true
+      - traefik.http.routers.${NGINX3:-foo3}.tls.certresolver=ionos
+
+networks:
+  traefik_net:
+    name: traefik_net
